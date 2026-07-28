@@ -490,6 +490,9 @@
       max-width:92%;
     }
     .tLinkBtn{
+      appearance:none;
+      border:none;
+      cursor:pointer;
       display:inline-flex;
       align-items:center;
       gap:8px;
@@ -945,6 +948,66 @@
     // ========= TRANSCRIPT UI =========
     let transcriptLines = 0;
 
+    // When this sentence is heard in the WebRTC transcription, the HTML
+    // displays a Compare ISA options button. The sentence is normalised
+    // before comparison so minor spacing, punctuation and apostrophe
+    // differences from transcription do not prevent the trigger.
+    const ISA_OPTIONS_TRIGGER =
+      "Based on what you've told us, here are some TSB ISA options that could suit you. Tap to compare:";
+
+    function normalizeTriggerText(value){
+      return String(value || "")
+        .toLowerCase()
+        .replace(/[’‘]/g, "'")
+        .replace(/[^a-z0-9£%' ]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    const NORMALIZED_ISA_OPTIONS_TRIGGER = normalizeTriggerText(ISA_OPTIONS_TRIGGER);
+
+    function isIsaOptionsTrigger(text){
+      const normalized = normalizeTriggerText(text);
+      return (
+        normalized.includes(NORMALIZED_ISA_OPTIONS_TRIGGER) ||
+        normalized.includes(
+          "based on what you've told us here are some tsb isa options that could suit you tap to compare"
+        )
+      );
+    }
+
+    function addIsaComparisonButton(){
+      const list = byId("transcriptList");
+      if (!list) return;
+
+      // Prevent the same trigger from adding duplicate buttons.
+      if (list.querySelector('[data-isa-comparison-button="true"]')) return;
+
+      const btnWrap = document.createElement("div");
+      btnWrap.className = "tLinkBtnWrap";
+      btnWrap.dataset.isaComparisonButton = "true";
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "tLinkBtn";
+      btn.textContent = "📊 Compare ISA options";
+      btn.setAttribute("aria-label", "Open ISA comparison");
+
+      // The Voice Gateway output deliberately contains no xApp URL, so the
+      // button opens the existing Cognigy Webchat v3 panel. That channel
+      // receives the rich xApp content without passing its URL to TTS.
+      btn.addEventListener("click", () => {
+        openRealWebchat();
+      });
+
+      btnWrap.appendChild(btn);
+      list.appendChild(btnWrap);
+
+      requestAnimationFrame(() => {
+        list.scrollTop = list.scrollHeight;
+      });
+    }
+
     function updateTranscriptCount(){
       const el = byId("transcriptCount");
       if (!el) return;
@@ -967,11 +1030,10 @@
       const hasLink = isBot && URL_TEST_PATTERN.test(safeText);
       const linkMatch = hasLink ? safeText.match(URL_PATTERN) : null;
       const url = linkMatch ? linkMatch[0] : null;
+      const shouldShowIsaButton = isBot && isIsaOptionsTrigger(safeText);
 
-      // Strip the raw URL out of the spoken/text line itself — it's
-      // rendered as a proper button below instead of an inline hyperlink,
-      // matching the button treatment used elsewhere in the app rather
-      // than leaving a bare link sitting in a transcript bubble.
+      // Preserve the old behaviour for any bot message that still contains
+      // a normal URL: hide the raw URL and render it as a button instead.
       const displayText = hasLink
         ? safeText.replace(URL_PATTERN, "").replace(/\s{2,}/g, " ").trim()
         : safeText;
@@ -1000,6 +1062,10 @@
         btn.textContent = "📊 View Comparison";
         btnWrap.appendChild(btn);
         list.appendChild(btnWrap);
+      }
+
+      if (shouldShowIsaButton) {
+        addIsaComparisonButton();
       }
 
       transcriptLines += 1;
