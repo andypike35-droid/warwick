@@ -897,7 +897,7 @@
   <script>
     // ========= CONFIG =========
     // Official Cognigy Click To Call Widget (docs.cognigy.com/click-to-call).
-    const WIDGET_SRC = "https://github.com/Cognigy/click-to-call-widget/releases/latest/download/webRTCWidget.js";
+    const WIDGET_SRC = "https://static-trial.cognigy.ai/webrtc/webRTCWidget.js";
 
     // Voice Gateway Endpoint for the TSB ISA Application Assistant Flow
     // (Click To Call enabled, per the Endpoint Editor's embedding snippet).
@@ -1243,6 +1243,61 @@
       updateTranscriptCount();
     }
 
+    // ========= WEBSOCKET TAP (captures SIP INFO frames with JSON _transcription) =========
+    // This matches the working NatWest implementation. It must be installed
+    // before the Cognigy WebRTC widget creates its WebSocket connection.
+    function installWebSocketTranscriptionTap(){
+      if (window.__wsTapInstalled) return;
+      window.__wsTapInstalled = true;
+
+      const NativeWebSocket = window.WebSocket;
+
+      window.WebSocket = function(...args){
+        const ws = new NativeWebSocket(...args);
+
+        ws.addEventListener("message", (ev) => {
+          const data = ev.data;
+          if (typeof data !== "string") return;
+          if (!data.includes('"_transcription"')) return;
+
+          const splitIndex = data.indexOf("\r\n\r\n");
+          if (splitIndex === -1) return;
+
+          const body = data.slice(splitIndex + 4).trim();
+          if (!body.startsWith("{")) return;
+
+          try {
+            const json = JSON.parse(body);
+            const transcription = json?._transcription;
+            if (!transcription) return;
+
+            const originator = transcription.originator || "unknown";
+            const messages = Array.isArray(transcription.messages)
+              ? transcription.messages
+              : [];
+
+            for (const message of messages){
+              if (message && typeof message.text === "string" && message.text.trim()){
+                addTranscriptLine(originator, message.text.trim());
+              }
+            }
+          } catch (error) {
+            console.warn("Unable to parse WebRTC transcription:", error);
+          }
+        });
+
+        return ws;
+      };
+
+      window.WebSocket.prototype = NativeWebSocket.prototype;
+      window.WebSocket.OPEN = NativeWebSocket.OPEN;
+      window.WebSocket.CLOSED = NativeWebSocket.CLOSED;
+      window.WebSocket.CLOSING = NativeWebSocket.CLOSING;
+      window.WebSocket.CONNECTING = NativeWebSocket.CONNECTING;
+    }
+
+    installWebSocketTranscriptionTap();
+
     // ========= WIDGET LOADER / INIT =========
     let widgetScriptLoaded = false;
     let preloadStarted = false;
@@ -1280,17 +1335,24 @@
     // click-to-call-widget README's CSS override list.
     function findCognigyStartButton(){
       return (
+        document.querySelector('button[data-testid="cognigy-call-button"]') ||
+        document.querySelector('button[aria-label="Start a call"]') ||
         document.querySelector(".webrtc_widget_content_call_button") ||
-        document.querySelector(".webrtc_widget_call_button") ||
-        document.querySelector('button[data-testid="cognigy-call-button"]')
+        document.querySelector(".webrtc_widget_call_button")
       );
     }
 
     function findCognigyEndButton(){
       return (
-        document.querySelector(".webrtc_widget_end_call_button") ||
+        document.querySelector('button[data-testid*="hang" i]') ||
+        document.querySelector('button[data-testid*="end" i]') ||
+        document.querySelector('button[aria-label*="hang" i]') ||
         document.querySelector('button[aria-label*="end" i]') ||
-        document.querySelector('button[title*="end" i]')
+        document.querySelector('button[title*="hang" i]') ||
+        document.querySelector('button[title*="end" i]') ||
+        document.querySelector('button[class*="hang" i]') ||
+        document.querySelector('button[class*="end" i]') ||
+        document.querySelector(".webrtc_widget_end_call_button")
       );
     }
 
@@ -1321,54 +1383,18 @@
       });
     }
 
-    // Wires the documented widget/session events (see
-    // github.com/Cognigy/click-to-call-widget#event-handling-and-callbacks)
-    // for the transcript mirror. NOTE: on this widget version the Promise
-    // returned by initWebRTCWidget() does not resolve promptly (it appears to
-    // hang well past when the widget's own call button is already live), so
-    // this runs fire-and-forget rather than being awaited for readiness —
-    // readiness is instead based on the button actually appearing in the DOM
-    // (see preloadWidget below).
-    function wireWidgetEvents(widget){
-      window.__widget = widget;
-
-      widget.on("newRTCSession", (session) => {
-        window.__session = session;
-        setStatus("Calling…");
-
-        session.on("answered", () => setStatus("Connected"));
-
-        session.on("transcription", (transcription) => {
-          const originator = transcription?.originator || "unknown";
-          const messages = Array.isArray(transcription?.messages) ? transcription.messages : [];
-          for (const m of messages) {
-            if (m && typeof m.text === "string" && m.text.trim()) {
-              addTranscriptLine(originator, m.text.trim());
-            }
-          }
-        });
-
-        session.on("failed", () => setStatus("Call failed"));
-        session.on("ended", () => setStatus("Ended"));
-        session.on("terminated", () => setStatus("Ended"));
-      });
-
-      widget.on("connecting", () => setStatus("Connecting…"));
-      widget.on("connected", () => setStatus("Connected"));
-      widget.on("disconnected", () => setStatus("Disconnected"));
-      widget.on("registrationFailed", () => setStatus("Registration failed"));
-    }
-
     async function preloadWidget(){
       if (preloadStarted) return;
       preloadStarted = true;
 
       setStatus("Loading…");
+
       try {
         await loadScript();
-      } catch {
+      } catch (error) {
+        console.warn("WebRTC widget failed to load:", error);
         setStatus("Load failed");
-        preloadStarted = false; // allow retry on next click
+        preloadStarted = false;
         return;
       }
 
@@ -1380,21 +1406,16 @@
 
       setStatus("Initializing…");
 
-      window.initWebRTCWidget(CLICK_TO_CALL_ENDPOINT_URL, {
-        // Fixed userId so this session is always found under the same
-        // value in Cognigy's Live Follow (Interaction Panel > Live Follow >
-        // User ID) — no need to hunt through Test > Logs for a random one.
-        userId: CLICK_TO_CALL_USER_ID,
-        ui: {
-          labels: {
-            callButton: "Start a Call",
-            endButton: "End a Call",
-            listenLabel: "Listening",
-          },
-        },
-      })
-        .then((widget) => wireWidgetEvents(widget))
-        .catch((err) => console.warn("initWebRTCWidget did not resolve:", err));
+      try {
+        // Match the known-working NatWest implementation: initialise the
+        // Cognigy-hosted widget directly with the Voice Gateway endpoint.
+        window.initWebRTCWidget(CLICK_TO_CALL_ENDPOINT_URL);
+      } catch (error) {
+        console.warn("WebRTC widget failed to initialise:", error);
+        setStatus("Initialization failed");
+        preloadStarted = false;
+        return;
+      }
 
       const btn = await waitForStartButton(10000);
       if (btn) {
@@ -1404,6 +1425,7 @@
         setStatus("Ready");
       } else {
         setStatus("Not ready");
+        preloadStarted = false;
       }
     }
 
