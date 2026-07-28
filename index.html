@@ -643,6 +643,14 @@
       opacity:0 !important;
       pointer-events:none !important;
     }
+
+    /* xApp iframe */
+    #xappFrame{
+      border:0;
+      width:100%;
+      height:100%;
+    }
+
   </style>
 </head>
 
@@ -853,6 +861,24 @@
         </div>
       </div>
 
+
+      <!-- xApp overlay -->
+      <div class="overlay" id="xappOverlay" aria-hidden="true">
+        <div class="sheet callSheet">
+          <div class="topBar">
+            <div class="h">Your ISA options</div>
+            <button class="btn ghost" id="btnCloseXapp">✕</button>
+          </div>
+
+          <div class="callBody" style="padding:0;">
+            <iframe
+              id="xappFrame"
+              sandbox="allow-scripts allow-forms allow-same-origin allow-popups">
+            </iframe>
+          </div>
+        </div>
+      </div>
+
       <!-- Real Webchat v3 dock -->
       <div class="overlay" id="webchatOverlay" aria-hidden="true">
         <div class="sheet callSheet">
@@ -898,6 +924,15 @@
     const WEBCHAT_SCRIPT_SRC = "https://github.com/Cognigy/Webchat/releases/latest/download/webchat.js";
     const WEBCHAT_CONFIG_URL = "https://endpoint-trial.cognigy.ai/0d6e44c5cfc43141757ef333e59341328df53f6bcf4c260d34cb978740fec1f5";
     const WEBCHAT_USER_ID = CLICK_TO_CALL_USER_ID; // same fixed ID, findable via Live Follow
+
+
+    // ===== Dynamic xApp URL via ntfy =====
+    // This mirrors the working NatWest demo. Cognigy publishes the generated
+    // {{ input.apps.url }} value to this topic, and this page subscribes to it.
+    // Use the same topic name in your Cognigy HTTP Request / Code Node.
+    const NTFY_TOPIC = "tsb-isa-xapp-demo-9f6b8c2a4d7e41c1b3a8f0";
+
+    let latestXappUrl = null;
 
     // ========= HELPERS =========
     const byId = (id) => document.getElementById(id);
@@ -945,6 +980,38 @@
       });
     }
 
+
+    // ========= NTFY SUBSCRIBE (SSE) =========
+    function subscribeToNtfy(){
+      const url = `https://ntfy.sh/${NTFY_TOPIC}/sse`;
+      const es = new EventSource(url);
+
+      es.onmessage = (ev) => {
+        try {
+          const envelope = JSON.parse(ev.data);
+          const message = envelope.message;
+          if (!message) return;
+
+          const payload = JSON.parse(message);
+          if (payload?.type !== "xapp") return;
+
+          if (typeof payload.url === "string" && payload.url.trim()) {
+            latestXappUrl = payload.url.trim();
+            updateIsaComparisonButton();
+            console.log("xApp URL updated:", latestXappUrl);
+          }
+        } catch {
+          // Ignore non-JSON or unrelated topic messages.
+        }
+      };
+
+      es.onerror = () => {
+        console.warn("ntfy SSE disconnected; the browser will retry automatically.");
+      };
+
+      window.__ntfy = es;
+    }
+
     // ========= TRANSCRIPT UI =========
     let transcriptLines = 0;
 
@@ -976,12 +1043,43 @@
       );
     }
 
+    function updateIsaComparisonButton(){
+      const btn = document.querySelector('[data-isa-comparison-action="true"]');
+      if (!btn) return;
+
+      const hasUrl = /^https:\/\//i.test(String(latestXappUrl || ""));
+      btn.disabled = !hasUrl;
+      btn.textContent = hasUrl
+        ? "📊 Compare ISA options"
+        : "📊 Loading ISA options…";
+      btn.title = hasUrl
+        ? "Open your ISA comparison"
+        : "Waiting for the secure xApp link";
+    }
+
+    function openXappInApp(url){
+      const overlay = byId("xappOverlay");
+      const frame = byId("xappFrame");
+      if (!overlay || !frame || !url) return;
+
+      frame.src = url;
+      show(overlay);
+    }
+
+    function closeXapp(){
+      const frame = byId("xappFrame");
+      if (frame) frame.src = "about:blank";
+      hide(byId("xappOverlay"));
+    }
+
     function addIsaComparisonButton(){
       const list = byId("transcriptList");
       if (!list) return;
 
-      // Prevent the same trigger from adding duplicate buttons.
-      if (list.querySelector('[data-isa-comparison-button="true"]')) return;
+      if (list.querySelector('[data-isa-comparison-button="true"]')) {
+        updateIsaComparisonButton();
+        return;
+      }
 
       const btnWrap = document.createElement("div");
       btnWrap.className = "tLinkBtnWrap";
@@ -990,18 +1088,20 @@
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "tLinkBtn";
-      btn.textContent = "📊 Compare ISA options";
+      btn.dataset.isaComparisonAction = "true";
       btn.setAttribute("aria-label", "Open ISA comparison");
 
-      // The Voice Gateway output deliberately contains no xApp URL, so the
-      // button opens the existing Cognigy Webchat v3 panel. That channel
-      // receives the rich xApp content without passing its URL to TTS.
       btn.addEventListener("click", () => {
-        openRealWebchat();
+        if (!/^https:\/\//i.test(String(latestXappUrl || ""))) {
+          console.warn("The ISA xApp URL has not arrived from ntfy yet.");
+          return;
+        }
+        openXappInApp(latestXappUrl);
       });
 
       btnWrap.appendChild(btn);
       list.appendChild(btnWrap);
+      updateIsaComparisonButton();
 
       requestAnimationFrame(() => {
         list.scrollTop = list.scrollHeight;
@@ -1587,6 +1687,8 @@
 
     // ========= UI wiring =========
     document.addEventListener("DOMContentLoaded", () => {
+      subscribeToNtfy();
+
       // Projection modal
       byId("btnProjection").addEventListener("click", () => show(byId("projectionModal")));
       byId("btnCloseProjection").addEventListener("click", () => hide(byId("projectionModal")));
@@ -1636,6 +1738,12 @@
       });
       byId("textChatOverlay").addEventListener("click", (e) => {
         if (e.target === byId("textChatOverlay")) hide(byId("textChatOverlay"));
+      });
+
+      // xApp overlay
+      byId("btnCloseXapp").addEventListener("click", () => closeXapp());
+      byId("xappOverlay").addEventListener("click", (e) => {
+        if (e.target === byId("xappOverlay")) closeXapp();
       });
 
       // Text chat controls
