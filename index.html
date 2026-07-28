@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -981,27 +980,75 @@
     }
 
 
-    // ========= NTFY SUBSCRIBE (SSE) =========
+    // ========= NTFY SUBSCRIBE (SSE + CACHED FALLBACK) =========
+    function applyNtfyEnvelope(envelope){
+      try {
+        if (!envelope || envelope.event !== "message" || !envelope.message) return false;
+
+        const payload =
+          typeof envelope.message === "string"
+            ? JSON.parse(envelope.message)
+            : envelope.message;
+
+        if (payload?.type !== "xapp") return false;
+
+        if (typeof payload.url === "string" && /^https:\/\//i.test(payload.url.trim())) {
+          latestXappUrl = payload.url.trim();
+          updateIsaComparisonButton();
+          console.log("xApp URL updated:", latestXappUrl);
+          return true;
+        }
+      } catch (error) {
+        console.warn("Ignored invalid ntfy message:", error);
+      }
+      return false;
+    }
+
+    async function fetchLatestXappUrl(){
+      try {
+        // Retrieves the most recently cached message. This fixes the race where
+        // Cognigy publishes the xApp URL just before the browser's SSE listener
+        // has fully connected.
+        const response = await fetch(
+          `https://ntfy.sh/${NTFY_TOPIC}/json?poll=1&since=latest`,
+          { cache: "no-store" }
+        );
+
+        if (!response.ok) {
+          throw new Error(`ntfy returned HTTP ${response.status}`);
+        }
+
+        const raw = await response.text();
+        const lines = raw.split(/\r?\n/).filter(Boolean);
+
+        // Work backwards so the newest valid xApp payload wins.
+        for (let index = lines.length - 1; index >= 0; index -= 1) {
+          try {
+            const envelope = JSON.parse(lines[index]);
+            if (applyNtfyEnvelope(envelope)) return latestXappUrl;
+          } catch {
+            // Ignore open/keepalive/non-JSON lines.
+          }
+        }
+      } catch (error) {
+        console.warn("Unable to fetch the latest xApp URL from ntfy:", error);
+      }
+
+      return null;
+    }
+
     function subscribeToNtfy(){
+      // First recover any message that arrived just before page subscription.
+      fetchLatestXappUrl();
+
       const url = `https://ntfy.sh/${NTFY_TOPIC}/sse`;
       const es = new EventSource(url);
 
       es.onmessage = (ev) => {
         try {
-          const envelope = JSON.parse(ev.data);
-          const message = envelope.message;
-          if (!message) return;
-
-          const payload = JSON.parse(message);
-          if (payload?.type !== "xapp") return;
-
-          if (typeof payload.url === "string" && payload.url.trim()) {
-            latestXappUrl = payload.url.trim();
-            updateIsaComparisonButton();
-            console.log("xApp URL updated:", latestXappUrl);
-          }
-        } catch {
-          // Ignore non-JSON or unrelated topic messages.
+          applyNtfyEnvelope(JSON.parse(ev.data));
+        } catch (error) {
+          console.warn("Unable to parse ntfy SSE event:", error);
         }
       };
 
@@ -1048,10 +1095,10 @@
       if (!btn) return;
 
       const hasUrl = /^https:\/\//i.test(String(latestXappUrl || ""));
-      btn.disabled = !hasUrl;
+      btn.disabled = false;
       btn.textContent = hasUrl
         ? "📊 Compare ISA options"
-        : "📊 Loading ISA options…";
+        : "📊 Compare ISA options";
       btn.title = hasUrl
         ? "Open your ISA comparison"
         : "Waiting for the secure xApp link";
@@ -1091,11 +1138,22 @@
       btn.dataset.isaComparisonAction = "true";
       btn.setAttribute("aria-label", "Open ISA comparison");
 
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
+        // Re-check the ntfy cache at click time as an extra safeguard against
+        // the publish/subscription race.
         if (!/^https:\/\//i.test(String(latestXappUrl || ""))) {
-          console.warn("The ISA xApp URL has not arrived from ntfy yet.");
+          btn.disabled = true;
+          btn.textContent = "📊 Loading ISA options…";
+          await fetchLatestXappUrl();
+        }
+
+        if (!/^https:\/\//i.test(String(latestXappUrl || ""))) {
+          btn.disabled = false;
+          btn.textContent = "📊 Try again";
+          console.warn("No valid ISA xApp URL is available yet.");
           return;
         }
+
         openXappInApp(latestXappUrl);
       });
 
