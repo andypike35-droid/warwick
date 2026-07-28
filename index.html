@@ -274,6 +274,11 @@
       cursor:not-allowed;
       box-shadow:none;
     }
+    .btn.muted{
+      background: var(--tsb-error);
+      border-color: var(--tsb-error);
+      color:#fff;
+    }
     .tip{
       margin-top:12px;
       font-size:12px;
@@ -479,6 +484,23 @@
       color: var(--tsb-action-blue);
       font-weight:800;
       text-decoration:underline;
+    }
+    .tLinkBtnWrap{
+      align-self:flex-start;
+      max-width:92%;
+    }
+    .tLinkBtn{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      border-radius:14px;
+      padding:10px 14px;
+      font-size:12.5px;
+      font-weight:1000;
+      color:#fff;
+      background: linear-gradient(180deg, var(--tsb-action-blue), var(--tsb-mid-blue));
+      box-shadow:0 10px 22px rgba(26,43,60,.14);
+      text-decoration:none;
     }
     .tMeta{
       display:block;
@@ -785,6 +807,7 @@
 
             <div class="btnRow" style="margin:0;">
               <button class="btn call" id="btnStartCall" disabled>Start call</button>
+              <button class="btn ghost" id="btnMuteCall" title="Mute your microphone — the agent keeps talking, it just can't hear you">🔇 Mute</button>
               <button class="btn ghost" id="btnEndCall">End call</button>
               <button class="btn ghost" id="btnClearTranscript" title="Clear transcript">Clear</button>
             </div>
@@ -940,16 +963,45 @@
       const distanceFromBottom = list.scrollHeight - list.scrollTop - list.clientHeight;
       const wasNearBottom = distanceFromBottom < thresholdPx;
 
-      const line = document.createElement("div");
-      line.className = `tLine ${who === "user" ? "user" : "bot"}`;
-      line.innerHTML = linkifyText(safeText);
+      const isBot = who !== "user";
+      const hasLink = isBot && URL_TEST_PATTERN.test(safeText);
+      const linkMatch = hasLink ? safeText.match(URL_PATTERN) : null;
+      const url = linkMatch ? linkMatch[0] : null;
 
-      const meta = document.createElement("span");
-      meta.className = "tMeta";
-      meta.textContent = who === "user" ? "Warwick Zimmer" : "TSB Assistant";
-      line.appendChild(meta);
+      // Strip the raw URL out of the spoken/text line itself — it's
+      // rendered as a proper button below instead of an inline hyperlink,
+      // matching the button treatment used elsewhere in the app rather
+      // than leaving a bare link sitting in a transcript bubble.
+      const displayText = hasLink
+        ? safeText.replace(URL_PATTERN, "").replace(/\s{2,}/g, " ").trim()
+        : safeText;
 
-      list.appendChild(line);
+      if (displayText) {
+        const line = document.createElement("div");
+        line.className = `tLine ${isBot ? "bot" : "user"}`;
+        line.innerHTML = hasLink ? escapeHtml(displayText) : linkifyText(displayText);
+
+        const meta = document.createElement("span");
+        meta.className = "tMeta";
+        meta.textContent = isBot ? "TSB Assistant" : "Warwick Zimmer";
+        line.appendChild(meta);
+
+        list.appendChild(line);
+      }
+
+      if (url) {
+        const btnWrap = document.createElement("div");
+        btnWrap.className = "tLinkBtnWrap";
+        const btn = document.createElement("a");
+        btn.className = "tLinkBtn";
+        btn.href = url;
+        btn.target = "_blank";
+        btn.rel = "noopener noreferrer";
+        btn.textContent = "📊 View Comparison";
+        btnWrap.appendChild(btn);
+        list.appendChild(btnWrap);
+      }
+
       transcriptLines += 1;
       updateTranscriptCount();
 
@@ -1015,6 +1067,18 @@
         document.querySelector(".webrtc_widget_end_call_button") ||
         document.querySelector('button[aria-label*="end" i]') ||
         document.querySelector('button[title*="end" i]')
+      );
+    }
+
+    // The widget ships its own Mute/Unmute button (confirmed CSS class from
+    // the click-to-call-widget README's override list). We drive it the
+    // same way as Start/End — find it and .click() it — rather than trying
+    // to reach into JsSIP's session/RTCPeerConnection ourselves.
+    function findCognigyMuteButton(){
+      return (
+        document.querySelector(".webrtc_widget_mute_button") ||
+        document.querySelector('button[aria-label*="mute" i]') ||
+        document.querySelector('button[title*="mute" i]')
       );
     }
 
@@ -1124,6 +1188,7 @@
       if (!btn) { setStatus("Not ready"); return; }
       btn.click();
       setStatus("Calling…");
+      resetMuteState();
     }
 
     function endCall(){
@@ -1134,6 +1199,30 @@
       } else {
         setStatus("End unavailable");
       }
+      resetMuteState();
+    }
+
+    // ---- Mute (mic only — the agent keeps talking, it just can't hear you) ----
+    let isMicMuted = false;
+
+    function updateMuteButtonUI(){
+      const btn = byId("btnMuteCall");
+      if (!btn) return;
+      btn.textContent = isMicMuted ? "🔊 Unmute" : "🔇 Mute";
+      btn.classList.toggle("muted", isMicMuted);
+    }
+
+    function resetMuteState(){
+      isMicMuted = false;
+      updateMuteButtonUI();
+    }
+
+    function toggleMute(){
+      const btn = findCognigyMuteButton();
+      if (!btn) { setStatus("Mute unavailable"); return; }
+      btn.click();
+      isMicMuted = !isMicMuted;
+      updateMuteButtonUI();
     }
 
     // ========= REAL COGNIGY WEBCHAT v3 (for the xApp continuation test) =========
@@ -1460,6 +1549,7 @@
       // Call controls
       byId("btnStartCall").addEventListener("click", () => startCall());
       byId("btnEndCall").addEventListener("click", () => endCall());
+      byId("btnMuteCall").addEventListener("click", () => toggleMute());
 
       // Transcript controls
       byId("btnClearTranscript").addEventListener("click", () => clearTranscript());
@@ -1490,6 +1580,7 @@
       byId("btnClearTextChat").addEventListener("click", () => clearTextChat());
 
       setStatus("Idle");
+      updateMuteButtonUI();
       updateTranscriptCount();
       setTextChatStatus("Idle");
     });
