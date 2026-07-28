@@ -1,0 +1,1498 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TSB Mock – ISA Application Message → Click To Call + Transcription</title>
+
+  <style>
+    :root{
+      /* Official TSB UK retail bank palette */
+      --tsb-cyan-blue:#00A3E0;
+      --tsb-mid-blue:#005A9C;
+      --tsb-navy-blue:#00205B;
+      --tsb-action-blue:#0072CE;
+      --tsb-text-dark:#1A2B3C;
+      --tsb-bg-light:#F4F6F8;
+      --tsb-success:#1E824C;
+      --tsb-success-2:#145E37;
+      --tsb-error:#D9381E;
+
+      --tsb-card:#FFFFFF;
+      --tsb-border:#E1E7E5;
+      --tsb-muted:#5B6672;
+      --shadow:0 16px 40px rgba(26,43,60,.12);
+      --shadow-soft:0 10px 25px rgba(26,43,60,.10);
+      --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family:var(--font);
+      background:#e9edf4;
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+      padding:22px;
+    }
+
+    /* Phone frame */
+    .phone{
+      width:min(430px, 94vw);
+      height:min(900px, 94vh);
+      background:#0f1115;
+      border-radius:40px;
+      padding:14px;
+      box-shadow:0 34px 90px rgba(0,0,0,.35);
+      position:relative;
+    }
+    .screen{
+      height:100%;
+      border-radius:30px;
+      overflow:hidden;
+      background:var(--tsb-bg-light);
+      position:relative;
+      display:flex;
+      flex-direction:column;
+    }
+
+    /* Header */
+    .header{
+      padding:18px 18px 16px;
+      background: linear-gradient(180deg, var(--tsb-mid-blue), var(--tsb-navy-blue));
+      color:#fff;
+      position:relative;
+      box-shadow:0 10px 30px rgba(0,0,0,.22);
+    }
+
+    /* Top row: time | centered logo | secure */
+    .topRow{
+      display:grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items:center;
+      gap:10px;
+      margin-bottom:10px;
+      font-size:12px;
+      opacity:.95;
+    }
+    .time{
+      justify-self:start;
+      font-weight:900;
+    }
+    .logoCenter{
+      justify-self:center;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+    }
+    .logoCenter .logoMark{
+      width:82px;
+      height:auto;
+      display:block;
+    }
+    .pillSecure{
+      justify-self:end;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      background: rgba(255,255,255,.18);
+      border:1px solid rgba(255,255,255,.22);
+      border-radius:999px;
+      padding:8px 12px;
+      font-weight:900;
+      font-size:12px;
+      backdrop-filter: blur(8px);
+    }
+    .dot{
+      width:10px;height:10px;border-radius:999px;
+      background: var(--tsb-success);
+      box-shadow:0 0 0 3px rgba(30,130,76,.18);
+    }
+
+    .h1{
+      font-size:28px;
+      font-weight:1000;
+      margin:6px 0 2px;
+      letter-spacing:-.3px;
+    }
+    .sub{
+      font-size:13px;
+      opacity:.9;
+      font-weight:800;
+    }
+
+    /* Main content */
+    .content{
+      flex:1;
+      overflow:auto;
+      padding:16px 16px 88px;
+    }
+    .sectionRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      margin:14px 2px 10px;
+    }
+    .sectionTitle{
+      font-weight:1000;
+      color: rgba(26,43,60,.60);
+      font-size:14px;
+    }
+    .pillTag{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:1000;
+      color: var(--tsb-action-blue);
+      background: rgba(0,114,206,.10);
+      border:1px solid rgba(0,114,206,.14);
+    }
+
+    /* Quick actions row */
+    .quickActions{
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap:12px;
+      margin-bottom:8px;
+    }
+    .qa{
+      background:#fff;
+      border:1px solid var(--tsb-border);
+      border-radius:18px;
+      padding:12px 10px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:8px;
+      box-shadow:0 12px 30px rgba(26,43,60,.06);
+    }
+    .qaIcon{
+      width:34px;height:34px;border-radius:12px;
+      background: rgba(0,114,206,.10);
+      border:1px solid rgba(0,114,206,.14);
+      display:grid;place-items:center;
+      font-weight:1000;
+      color: var(--tsb-action-blue);
+      font-size:16px;
+    }
+    .qaLabel{
+      font-size:12px;
+      font-weight:900;
+      color: rgba(26,43,60,.70);
+      text-align:center;
+    }
+
+    /* Notification card */
+    .notifCard{
+      background:#fff;
+      border:1px solid var(--tsb-border);
+      border-radius:22px;
+      box-shadow: var(--shadow-soft);
+      padding:14px;
+    }
+    .notifHeader{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .notifIcon{
+      width:28px;height:28px;border-radius:9px;
+      display:grid;place-items:center;
+      font-size:14px;
+      color:#fff;
+      background: linear-gradient(180deg, var(--tsb-mid-blue), var(--tsb-navy-blue));
+      flex:0 0 auto;
+    }
+    .notifApp{
+      font-size:12px;
+      font-weight:1000;
+      letter-spacing:.3px;
+      text-transform:uppercase;
+      color: rgba(26,43,60,.55);
+    }
+    .notifTime{
+      margin-left:auto;
+      font-size:12px;
+      font-weight:800;
+      color: rgba(26,43,60,.45);
+    }
+    .notifTitle{
+      font-size:15px;
+      font-weight:1000;
+      color: rgba(26,43,60,.95);
+      margin-bottom:4px;
+    }
+    .notifText{
+      font-size:13.5px;
+      line-height:1.4;
+      color: rgba(26,43,60,.80);
+    }
+
+    .btnRow{
+      display:flex;
+      gap:10px;
+      margin-top:12px;
+      flex-wrap:wrap;
+    }
+    .btn{
+      appearance:none;
+      border:none;
+      cursor:pointer;
+      border-radius:16px;
+      padding:12px 14px;
+      font-weight:1000;
+      font-size:13px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      box-shadow: 0 14px 28px rgba(26,43,60,.12);
+      user-select:none;
+    }
+    .btn.primary{
+      background: linear-gradient(180deg, var(--tsb-action-blue), var(--tsb-mid-blue));
+      color:#fff;
+    }
+    .btn.call{
+      background: linear-gradient(180deg, var(--tsb-success), var(--tsb-success-2));
+      color:#fff;
+    }
+    .btn.ghost{
+      background:#fff;
+      border:1px solid var(--tsb-border);
+      color: rgba(26,43,60,.82);
+      box-shadow:none;
+    }
+    .btn:disabled{
+      opacity:.6;
+      cursor:not-allowed;
+      box-shadow:none;
+    }
+    .tip{
+      margin-top:12px;
+      font-size:12px;
+      color: rgba(26,43,60,.55);
+      border-top:1px solid rgba(227,231,238,.8);
+      padding-top:10px;
+      line-height:1.35;
+    }
+
+    /* Bottom nav */
+    .nav{
+      position:absolute;
+      left:0;right:0;bottom:0;
+      background: rgba(255,255,255,.92);
+      border-top:1px solid var(--tsb-border);
+      padding:10px 10px 14px;
+      display:flex;
+      justify-content:space-around;
+      z-index:10;
+      backdrop-filter: blur(10px);
+    }
+    .navItem{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:6px;
+      font-size:11px;
+      font-weight:900;
+      color: rgba(26,43,60,.45);
+      min-width:52px;
+    }
+    .navItem .ico{
+      width:24px;height:24px;
+      display:grid;place-items:center;
+      border-radius:10px;
+    }
+    .navItem.active{ color: var(--tsb-action-blue); }
+    .navItem.active .ico{
+      background: rgba(0,114,206,.12);
+      border:1px solid rgba(0,114,206,.14);
+      color: var(--tsb-action-blue);
+    }
+
+    /* Modals / overlays */
+    .modal, .overlay{
+      position:absolute;
+      inset:0;
+      background: rgba(26,43,60,.52);
+      display:none;
+      z-index:50;
+      padding:12px;
+    }
+    .show{ display:block; }
+
+    .sheet{
+      position:absolute;
+      left:12px; right:12px;
+      top:88px;
+      border-radius:26px;
+      background:#fff;
+      border:1px solid rgba(255,255,255,.65);
+      box-shadow: 0 30px 90px rgba(0,0,0,.35);
+      overflow:hidden;
+    }
+    .callSheet{
+      top:68px;
+      bottom:82px;
+      display:flex;
+      flex-direction:column;
+    }
+    .topBar{
+      padding:14px;
+      border-bottom:1px solid var(--tsb-border);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      background: rgba(0,114,206,.06);
+    }
+    .topBar .h{
+      font-weight:1000;
+      font-size:16px;
+      color: rgba(26,43,60,.92);
+    }
+    .sheetBody{ padding:14px; }
+    .callBody{
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      overflow:auto;
+      flex:1;
+    }
+    .chatMount{
+      border:1px dashed rgba(0,114,206,.26);
+      background: rgba(0,114,206,.04);
+      border-radius:18px;
+      padding:12px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      font-size:12px;
+      color: rgba(26,43,60,.55);
+    }
+    .textChatInputRow{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex:0 0 auto;
+    }
+    .textChatInput{
+      flex:1;
+      min-width:0;
+      border:1px solid var(--tsb-border);
+      border-radius:14px;
+      padding:10px 12px;
+      font-size:13px;
+      font-family:var(--font);
+      color: rgba(26,43,60,.90);
+    }
+    .textChatInput:focus{
+      outline:none;
+      border-color: var(--tsb-action-blue);
+    }
+    .pill{
+      border:1px solid rgba(227,231,238,.9);
+      background:#fff;
+      border-radius:999px;
+      padding:8px 12px;
+      color: rgba(26,43,60,.70);
+      font-weight:1000;
+      font-size:12px;
+      white-space:nowrap;
+    }
+
+    /* Projection */
+    .projGrid{ display:grid; gap:12px; }
+    .projCard{
+      border:1px solid var(--tsb-border);
+      border-radius:18px;
+      padding:12px;
+      background:#fff;
+      box-shadow:0 10px 25px rgba(26,43,60,.06);
+    }
+    .projTitle{
+      font-weight:1000;
+      color: rgba(26,43,60,.90);
+      margin-bottom:6px;
+      font-size:13px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .projMeta{
+      font-size:12px;
+      color: rgba(26,43,60,.58);
+      line-height:1.4;
+    }
+
+    /* Transcript list */
+    #transcriptCard{
+      display:flex;
+      flex-direction:column;
+      height:320px;
+      min-height:260px;
+    }
+    .transcriptList{
+      margin-top:10px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      overflow:auto;
+      flex:1;
+      padding-right:4px;
+      scroll-behavior:smooth;
+      min-height:0;
+    }
+    .tLine{
+      max-width:92%;
+      border-radius:14px;
+      padding:10px 10px;
+      font-size:12.5px;
+      line-height:1.3;
+      border:1px solid rgba(227,231,238,.9);
+      background:#fff;
+      color: rgba(26,43,60,.80);
+      box-shadow:0 8px 18px rgba(26,43,60,.06);
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+    .tLine.bot{
+      align-self:flex-start;
+      background: rgba(0,114,206,.06);
+      border-color: rgba(0,114,206,.16);
+    }
+    .tLine.user{
+      align-self:flex-end;
+      background: rgba(30,130,76,.10);
+      border-color: rgba(30,130,76,.18);
+    }
+    .tLine a{
+      color: var(--tsb-action-blue);
+      font-weight:800;
+      text-decoration:underline;
+    }
+    .tMeta{
+      display:block;
+      font-size:10.5px;
+      opacity:.75;
+      margin-top:6px;
+      font-weight:900;
+      letter-spacing:.2px;
+    }
+
+    /* Inline ISA comparison card (shown in-chat instead of a link out to
+       an external xApp page — see buildIsaCompareCard() below). */
+    .compareCard{
+      align-self:flex-start;
+      max-width:94%;
+      border:1px solid var(--tsb-border);
+      border-radius:16px;
+      background:#fff;
+      padding:12px;
+      box-shadow:0 10px 22px rgba(26,43,60,.08);
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .compareCardTitle{
+      font-weight:1000;
+      font-size:12.5px;
+      color: rgba(26,43,60,.85);
+    }
+    .compareOption{
+      border:1px solid var(--tsb-border);
+      border-radius:12px;
+      padding:10px;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .compareOptionTop{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px;
+    }
+    .compareOptionName{
+      font-weight:1000;
+      font-size:12.5px;
+      color: rgba(26,43,60,.90);
+    }
+    .compareOptionRate{
+      font-weight:1000;
+      font-size:12.5px;
+      color: var(--tsb-action-blue);
+      white-space:nowrap;
+    }
+    .compareOptionMeta{
+      font-size:11.5px;
+      color: rgba(26,43,60,.58);
+    }
+    .compareOption .btn{
+      padding:9px 12px;
+      font-size:12px;
+      border-radius:12px;
+      box-shadow:none;
+      width:100%;
+    }
+    .compareCard.chosen .compareOption{ opacity:.5; }
+    .compareChosenNote{
+      font-size:12px;
+      font-weight:1000;
+      color: var(--tsb-success-2);
+    }
+
+    /* Real Webchat v3 dock */
+    .webchatMount{
+      flex:1;
+      min-height:0;
+      position:relative;
+      overflow:hidden;
+      background:#fff;
+    }
+    .webchatMountHint{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+      text-align:center;
+      font-size:12.5px;
+      font-weight:800;
+      color: rgba(26,43,60,.55);
+    }
+
+    /* Cognigy Webchat v3 — documented CSS hooks (github.com/Cognigy/Webchat
+       docs/css-customization.md: [data-cognigy-webchat-root], .webchat,
+       .webchat-toggle-button, .webchat-teaser-message-root). The widget is
+       plain same-origin DOM (not an iframe), so we can hide its native
+       floating launcher/teaser everywhere on the page — we drive open/close
+       via our own button/✕ instead — and, once its root node is reparented
+       into #webchatMount (see dockWebchatRoot() in the script), force its
+       panel to fill that mount instead of using its own fixed
+       viewport-corner position.
+       NOTE: these overrides are built from Cognigy's documented selectors,
+       not a live inspection of the rendered widget — the exact sizing may
+       need a small follow-up tweak once tested live. */
+    .webchat-toggle-button,
+    .webchat-teaser-message-root{
+      display:none !important;
+    }
+    #webchatMount [data-cognigy-webchat-root]{
+      position:static !important;
+      inset:auto !important;
+      top:auto !important; left:auto !important; right:auto !important; bottom:auto !important;
+      width:100% !important;
+      height:100% !important;
+      max-width:none !important;
+      max-height:none !important;
+    }
+    #webchatMount [data-cognigy-webchat-root] .webchat{
+      position:static !important;
+      width:100% !important;
+      height:100% !important;
+      max-width:none !important;
+      max-height:none !important;
+      border-radius:0 !important;
+      box-shadow:none !important;
+    }
+
+    /* Hide the widget's own floating shell once we use our own controls.
+       opacity+pointer-events (not display/visibility) so a programmatic
+       .click() on the button still fires, and our isVisible() checks on
+       the end-call button (nested in the same shell) still pass. */
+    .hide-cognigy-launcher .webrtc_widget_outer_wrapper,
+    .hide-cognigy-launcher .webrtc_widget_content_call_button,
+    .hide-cognigy-launcher .webrtc_widget_call_button,
+    .hide-cognigy-launcher button[data-testid="cognigy-call-button"]{
+      opacity:0 !important;
+      pointer-events:none !important;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="phone">
+    <div class="screen">
+
+      <div class="header">
+        <div class="topRow">
+          <div class="time">11:07</div>
+
+          <div class="logoCenter" title="TSB">
+            <svg class="logoMark" viewBox="0 0 1197.299 708.662" xmlns="http://www.w3.org/2000/svg" aria-label="TSB logo">
+              <path fill="#26358C" d="M842.974,212.599c-52.05,0-97.508,28.064-122.159,69.86c12.415,21.096,19.571,45.637,19.571,71.88 c0,26.203-7.157,50.77-19.571,71.838c24.651,41.813,70.109,69.887,122.159,69.887c78.269,0,141.725-63.445,141.725-141.725 C984.699,276.056,921.243,212.599,842.974,212.599z"/>
+              <path fill="#0068B3" d="M720.815,282.458c-24.662-41.796-70.125-69.86-122.159-69.86c-52.049,0-97.521,28.064-122.165,69.86 c12.427,21.096,19.573,45.637,19.573,71.88c0,26.203-7.146,50.77-19.573,71.838c24.645,41.813,70.116,69.887,122.165,69.887 c52.034,0,97.497-28.074,122.159-69.887c-12.438-21.068-19.579-45.635-19.579-71.838 C701.236,328.095,708.377,303.554,720.815,282.458z"/>
+              <path fill="#36BCEE" d="M476.491,282.458c-24.65-41.796-70.118-69.86-122.158-69.86c-78.278,0-141.736,63.457-141.736,141.74 c0,78.28,63.458,141.725,141.736,141.725c52.04,0,97.508-28.074,122.158-69.887c-12.416-21.068-19.572-45.635-19.572-71.838 C456.919,328.095,464.076,303.554,476.491,282.458z"/>
+              <path fill="#005C9E" d="M476.491,426.176c12.427-21.068,19.573-45.635,19.573-71.838c0-26.243-7.146-50.784-19.573-71.88 c-12.416,21.096-19.572,45.637-19.572,71.88C456.919,380.542,464.076,405.108,476.491,426.176z"/>
+              <path fill="#005C9E" d="M476.491,426.203l-0.011-0.027c-12.804-21.719-19.583-46.569-19.583-71.838 c0-25.296,6.779-50.147,19.583-71.88l0.011-0.025l0.016,0.025c12.809,21.732,19.578,46.583,19.578,71.88 c0,25.269-6.77,50.119-19.578,71.838L476.491,426.203z M476.491,282.512c-12.792,21.71-19.562,46.545-19.562,71.826 c0,25.256,6.769,50.095,19.562,71.812c12.793-21.717,19.557-46.556,19.557-71.812C496.048,329.058,489.285,304.222,476.491,282.512z"/>
+              <path fill="#002F60" d="M720.815,426.19c12.415-21.067,19.571-45.606,19.571-71.838c0-26.238-7.157-50.791-19.571-71.88 c-12.438,21.089-19.579,45.642-19.579,71.88C701.236,380.584,708.377,405.123,720.815,426.19z"/>
+              <path fill="#FFFFFF" d="M407.632,304.821h-41.231v126.266h-28.446V304.821h-40.343v-25.83h110.02V304.821z"/>
+              <path fill="#FFFFFF" d="M793.693,278.978h53.246c20.258,0.208,25.65,0.443,32.976,2.572c15.289,4.537,25.977,18.105,25.977,34.689 c0,6.686-1.435,14.875-5.736,20.694c-4.728,6.261-10.772,9.466-18.967,10.975c16.812,3.05,31.445,16.599,31.445,40.081 c0,17.456-7.745,32.967-26.06,39.436c-9.688,3.442-17.222,3.663-34.456,3.663h-58.425V278.978z M821.79,302.228v37.921h8.79 c7.949,0,13.771,0,17.216-0.208c7.116,0,14.229-0.21,19.401-3.009c6.041-3.016,10.117-8.837,10.117-15.74 c0-5.812-3.012-11.629-8.812-15.067c-6.062-3.448-9.073-3.676-29.751-3.897H821.79z M821.79,361.493v45.024h27.097 c16.807,0,21.312,0,28.651-5.162c3.885-2.808,6.897-8.611,6.897-15.936c0-3.445-0.665-7.551-2.806-11.421 c-6.896-12.282-22.833-12.505-32.54-12.505H821.79z"/>
+              <path fill="#FFFFFF" d="M613.298,340.925l-15.605-3.415c-13.691-2.577-27.788-5.146-27.788-17.971 c0-11.537,13.24-18.38,28.427-18.38c22.947,0,32.951,13.469,38.305,21.237l22.416-17.917c-10.777-14.199-27.61-28.761-59.213-28.761 c-35.497,0-59.665,18.382-59.665,47.04c0,25.015,18.597,34.211,25.451,36.985c4.695,1.926,9.405,2.984,19.014,5.356l18.179,3.835 c13.692,3.218,14.123,3.429,17.547,4.711c4.708,1.928,11.337,5.327,11.337,14.968c0,5.125-1.931,12.833-12.835,17.312 c-5.357,2.144-10.907,2.571-16.255,2.571c-30.26,0-41.986-15.598-46.208-21.95l-22.978,17.546 c11.355,17.458,27.938,23.928,37.76,26.847c9.196,2.572,18.583,3.434,26.938,3.434c32.057,0,64.13-13.912,64.13-48.529 C662.255,353.556,633.615,345.202,613.298,340.925z"/>
+            </svg>
+          </div>
+
+          <div class="pillSecure"><span class="dot"></span> Secure</div>
+        </div>
+
+        <div class="h1">Hi Warwick</div>
+        <div class="sub">Welcome back • Personal Banking</div>
+      </div>
+
+      <div class="content">
+        <div class="sectionRow">
+          <div class="sectionTitle">Quick actions</div>
+          <div style="width:18px;"></div>
+        </div>
+
+        <div class="quickActions">
+          <div class="qa"><div class="qaIcon">⇄</div><div class="qaLabel">Transfer</div></div>
+          <div class="qa"><div class="qaIcon">💳</div><div class="qaLabel">Cards</div></div>
+          <div class="qa"><div class="qaIcon">🧾</div><div class="qaLabel">Pay bills</div></div>
+          <div class="qa"><div class="qaIcon">📈</div><div class="qaLabel">Insights</div></div>
+        </div>
+
+        <div class="sectionRow" style="margin-top:18px;">
+          <div class="sectionTitle">Notifications</div>
+          <div class="pillTag">Proactive</div>
+        </div>
+
+        <div class="notifCard">
+          <div class="notifHeader">
+            <div class="notifIcon">🔔</div>
+            <div class="notifApp">TSB</div>
+            <div class="notifTime">Just now</div>
+          </div>
+
+          <div class="notifTitle">Boost your savings</div>
+          <div class="notifText">Hi Warwick 👋 We're here to help you make the most of your money. You may have savings that could be earning more in a Cash ISA, tax-free. Would you like to see what that could look like?</div>
+
+          <div class="btnRow">
+            <button class="btn primary" id="btnProjection">📊 Compare ISAs</button>
+            <button class="btn call" id="btnCallNow">📞 Call Now</button>
+            <button class="btn ghost" id="btnTextChat">💬 Text Chat</button>
+            <button class="btn ghost" id="btnRealWebchat">🧪 Real Webchat</button>
+          </div>
+
+          <div class="tip">Tip: “Call Now” opens an in-app call, “Text Chat” opens our custom message thread — both with your TSB savings assistant. “Real Webchat” docks Cognigy's actual Webchat v3 widget inside this screen, so the ISA comparison renders as a real inline xApp and the conversation can genuinely continue after you choose.</div>
+        </div>
+      </div>
+
+      <div class="nav">
+        <div class="navItem active"><div class="ico">🏠</div><div>Home</div></div>
+        <div class="navItem"><div class="ico">💬</div><div>Messages</div></div>
+        <div class="navItem"><div class="ico">📊</div><div>Insights</div></div>
+        <div class="navItem"><div class="ico">🔔</div><div>Alerts</div></div>
+        <div class="navItem"><div class="ico">☰</div><div>More</div></div>
+      </div>
+
+      <!-- ISA comparison modal -->
+      <div class="modal" id="projectionModal" aria-hidden="true">
+        <div class="sheet">
+          <div class="topBar">
+            <div class="h">Your ISA options</div>
+            <button class="btn ghost" id="btnCloseProjection">✕</button>
+          </div>
+
+          <div class="sheetBody">
+            <div class="projGrid">
+              <div class="projCard">
+                <div class="projTitle">Your savings snapshot</div>
+                <div class="projMeta">
+                  Based on recent history, you've held around <b>£5,000</b> in your Current Account.
+                  Below is an illustrative comparison of leaving it there vs moving some/all into a Cash ISA.
+                </div>
+              </div>
+
+              <div class="projCard">
+                <div class="projTitle">Illustrative ISA options</div>
+                <div class="projMeta">TSB's Cash ISA range (rates as published, reconfirm before applying):</div>
+
+                <table aria-label="ISA options" style="width:100%; border-collapse:separate; border-spacing:0; overflow:hidden; border-radius:16px; border:1px solid rgba(227,231,238,.9); margin-top:10px; font-size:12px;">
+                  <thead>
+                    <tr>
+                      <th style="padding:10px 10px; border-bottom:1px solid rgba(227,231,238,.9); text-align:left; background: rgba(0,114,206,.06); color: rgba(26,43,60,.75); font-weight:1000;">Product</th>
+                      <th style="padding:10px 10px; border-bottom:1px solid rgba(227,231,238,.9); text-align:left; background: rgba(0,114,206,.06); color: rgba(26,43,60,.75); font-weight:1000;">Access</th>
+                      <th style="padding:10px 10px; border-bottom:1px solid rgba(227,231,238,.9); text-align:right; background: rgba(0,114,206,.06); color: rgba(26,43,60,.75); font-weight:1000;">Rate (AER)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style="padding:10px 10px; border-bottom:1px solid rgba(227,231,238,.9);">Cash ISA Saver</td>
+                      <td style="padding:10px 10px; border-bottom:1px solid rgba(227,231,238,.9);">Instant access</td>
+                      <td style="padding:10px 10px; border-bottom:1px solid rgba(227,231,238,.9); text-align:right;">1.10%</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:10px 10px; border-bottom:1px solid rgba(227,231,238,.9);">Save Well Limited Access ISA</td>
+                      <td style="padding:10px 10px; border-bottom:1px solid rgba(227,231,238,.9);">Limited withdrawals</td>
+                      <td style="padding:10px 10px; border-bottom:1px solid rgba(227,231,238,.9); text-align:right;">3.00%</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:10px 10px;">Fixed Rate Cash ISA</td>
+                      <td style="padding:10px 10px;">Locked (18mo–3yr terms)</td>
+                      <td style="padding:10px 10px; text-align:right;">4.10%</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <div class="projMeta" style="margin-top:10px; font-size:11px; color: rgba(26,43,60,.52);">
+                  Simplified illustration; doesn't account for allowance already used, tax treatment, or fees. FSCS-protected up to £120,000.
+                </div>
+              </div>
+
+              <div class="projCard">
+                <div class="projTitle">Next best actions</div>
+                <div class="projMeta">
+                  • Check your ISA allowance already used this tax year<br>
+                  • Move a portion (e.g., £3,500) into a Cash ISA<br>
+                  • Speak to the assistant now to tailor the recommendation
+                </div>
+                <div class="btnRow" style="margin-top:12px;">
+                  <button class="btn call" id="btnProjectionCall">📞 Call Now</button>
+                  <button class="btn ghost" id="btnProjectionClose">Close</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Call overlay -->
+      <div class="overlay" id="callOverlay" aria-hidden="true">
+        <div class="sheet callSheet">
+          <div class="topBar">
+            <div class="h">ISA Application Call</div>
+            <button class="btn ghost" id="btnCloseCall">✕</button>
+          </div>
+
+          <div class="callBody">
+            <div class="chatMount">
+              <div><b>TSB Assistant</b><br><span style="font-size:11px;">Cognigy Click To Call</span></div>
+              <div class="pill" id="chatStatus">Idle</div>
+            </div>
+
+            <div class="btnRow" style="margin:0;">
+              <button class="btn call" id="btnStartCall" disabled>Start call</button>
+              <button class="btn ghost" id="btnEndCall">End call</button>
+              <button class="btn ghost" id="btnClearTranscript" title="Clear transcript">Clear</button>
+            </div>
+
+            <!-- Transcript -->
+            <div class="projCard" id="transcriptCard">
+              <div class="projTitle">
+                <span>Live transcription</span>
+                <span class="pill" id="transcriptCount">0 lines</span>
+              </div>
+
+              <div class="transcriptList" id="transcriptList" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Text chat overlay -->
+      <div class="overlay" id="textChatOverlay" aria-hidden="true">
+        <div class="sheet callSheet">
+          <div class="topBar">
+            <div class="h">ISA Application Chat</div>
+            <button class="btn ghost" id="btnCloseTextChat">✕</button>
+          </div>
+
+          <div class="callBody">
+            <div class="chatMount">
+              <div><b>TSB Assistant</b><br><span style="font-size:11px;">Text chat via REST</span></div>
+              <div class="pill" id="textChatStatus">Idle</div>
+            </div>
+
+            <div class="transcriptList" id="textChatList" aria-live="polite"></div>
+
+            <div class="textChatInputRow">
+              <input id="textChatInput" type="text" class="textChatInput" placeholder="Type a message…" autocomplete="off" />
+              <button class="btn primary" id="btnSendText">Send</button>
+              <button class="btn ghost" id="btnClearTextChat" title="Start a new conversation">New</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Real Webchat v3 dock -->
+      <div class="overlay" id="webchatOverlay" aria-hidden="true">
+        <div class="sheet callSheet">
+          <div class="topBar">
+            <div class="h">TSB Assistant — Real Webchat</div>
+            <button class="btn ghost" id="btnCloseWebchat">✕</button>
+          </div>
+          <div class="webchatMount" id="webchatMount">
+            <div class="webchatMountHint" id="webchatMountHint">Loading Cognigy Webchat…</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ========= CONFIG =========
+    // Official Cognigy Click To Call Widget (docs.cognigy.com/click-to-call).
+    const WIDGET_SRC = "https://github.com/Cognigy/click-to-call-widget/releases/latest/download/webRTCWidget.js";
+
+    // Voice Gateway Endpoint for the TSB ISA Application Assistant Flow
+    // (Click To Call enabled, per the Endpoint Editor's embedding snippet).
+    const CLICK_TO_CALL_ENDPOINT_URL = "https://endpoint-trial.cognigy.ai/138b4d97756ae0db6595304d3f29d7806f3aad712265dcc5c60e209ad8b4f674";
+
+    // Fixed user ID for this demo session — type this same value into
+    // Cognigy's Live Follow (Interaction Panel > Live Follow > User ID)
+    // to watch the conversation live while testing via this HTML.
+    const CLICK_TO_CALL_USER_ID = "warwick-tsb-isa-demo";
+
+    // Same underlying ISA flow, reached via its REST Endpoint instead of
+    // Voice Gateway. No API key required (Authentication Method: None) and
+    // CORS is open, confirmed by a direct curl test against this URL.
+    const TEXT_CHAT_ENDPOINT_URL = "https://endpoint-trial.cognigy.ai/29d673ffbe69c63fb5ac32f4c19fddc99d4542c7c70034152e9a25cf51d2959b";
+    const TEXT_CHAT_USER_ID = CLICK_TO_CALL_USER_ID; // same fixed ID, findable via Live Follow either way
+
+    // Real Cognigy Webchat v3 (github.com/Cognigy/Webchat), pointed at the
+    // same ISA flow via its Webchat3 Endpoint. Used specifically to test
+    // whether a real xApp submission (rendered inline by the widget itself,
+    // no external tab) lets the conversation continue — unlike the REST
+    // text chat above, Webchat keeps a live connection open, so it can
+    // actually receive that continuation reply.
+    const WEBCHAT_SCRIPT_SRC = "https://github.com/Cognigy/Webchat/releases/latest/download/webchat.js";
+    const WEBCHAT_CONFIG_URL = "https://endpoint-trial.cognigy.ai/0d6e44c5cfc43141757ef333e59341328df53f6bcf4c260d34cb978740fec1f5";
+    const WEBCHAT_USER_ID = CLICK_TO_CALL_USER_ID; // same fixed ID, findable via Live Follow
+
+    // ========= HELPERS =========
+    const byId = (id) => document.getElementById(id);
+    // Toggling just the CSS class left aria-hidden="true" stuck on open
+    // overlays (they all start with it in the markup) — that's what Chrome's
+    // "Blocked aria-hidden" warning was flagging: a focused button sitting
+    // inside an ancestor still marked aria-hidden. Clear/restore it here too.
+    const show = (el) => { el.classList.add("show"); el.setAttribute("aria-hidden", "false"); };
+    const hide = (el) => { el.classList.remove("show"); el.setAttribute("aria-hidden", "true"); };
+    const setStatus = (t) => { const el = byId("chatStatus"); if (el) el.textContent = t; };
+
+    function isVisible(el){
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden";
+    }
+
+    // ========= TEXT RENDERING (escape + linkify) =========
+    // Bot replies can contain raw URLs (e.g. a link to a hosted xApp
+    // comparison page). Rendered via textContent these are just inert text
+    // that overflows its bubble; this escapes the message safely and turns
+    // URLs into real, clickable, word-wrapping links.
+    function escapeHtml(str){
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    const URL_PATTERN = /(https?:\/\/[^\s<>"']+)/g;
+    // Non-global twin for .test() — a global regex mutates lastIndex across
+    // calls, which would corrupt the .replace() calls above if shared.
+    const URL_TEST_PATTERN = /https?:\/\/[^\s<>"']+/;
+
+    function linkifyText(text){
+      const escaped = escapeHtml(text);
+      return escaped.replace(URL_PATTERN, (url) => {
+        // Keep trailing punctuation (e.g. a sentence-ending period) outside the link
+        const trailingMatch = url.match(/[).,!?]+$/);
+        const trailing = trailingMatch ? trailingMatch[0] : "";
+        const core = trailing ? url.slice(0, -trailing.length) : url;
+        return `<a href="${core}" target="_blank" rel="noopener noreferrer">${core}</a>${trailing}`;
+      });
+    }
+
+    // ========= TRANSCRIPT UI =========
+    let transcriptLines = 0;
+
+    function updateTranscriptCount(){
+      const el = byId("transcriptCount");
+      if (!el) return;
+      el.textContent = `${transcriptLines} ${transcriptLines === 1 ? "line" : "lines"}`;
+    }
+
+    function addTranscriptLine(originator, text){
+      const list = byId("transcriptList");
+      if (!list) return;
+
+      const who = (originator || "unknown").toLowerCase();
+      const safeText = String(text || "").trim();
+      if (!safeText) return;
+
+      const thresholdPx = 24;
+      const distanceFromBottom = list.scrollHeight - list.scrollTop - list.clientHeight;
+      const wasNearBottom = distanceFromBottom < thresholdPx;
+
+      const line = document.createElement("div");
+      line.className = `tLine ${who === "user" ? "user" : "bot"}`;
+      line.innerHTML = linkifyText(safeText);
+
+      const meta = document.createElement("span");
+      meta.className = "tMeta";
+      meta.textContent = who === "user" ? "Warwick Zimmer" : "TSB Assistant";
+      line.appendChild(meta);
+
+      list.appendChild(line);
+      transcriptLines += 1;
+      updateTranscriptCount();
+
+      if (wasNearBottom) {
+        requestAnimationFrame(() => {
+          list.scrollTop = list.scrollHeight;
+        });
+      }
+    }
+
+    function clearTranscript(){
+      const list = byId("transcriptList");
+      if (list) list.innerHTML = "";
+      transcriptLines = 0;
+      updateTranscriptCount();
+    }
+
+    // ========= WIDGET LOADER / INIT =========
+    let widgetScriptLoaded = false;
+    let preloadStarted = false;
+    let cachedStartBtn = null;
+
+    function loadScript(timeoutMs = 12000){
+      return new Promise((resolve, reject) => {
+        if (widgetScriptLoaded) return resolve("already-loaded");
+        widgetScriptLoaded = true;
+
+        const s = document.createElement("script");
+        s.src = WIDGET_SRC;
+        s.async = true;
+
+        let done = false;
+        const ok = (how) => { if (done) return; done = true; resolve(how); };
+        const fail = (how) => {
+          if (done) return;
+          done = true;
+          widgetScriptLoaded = false;
+          reject(new Error(how));
+        };
+
+        const t = setTimeout(() => fail("timeout"), timeoutMs);
+        s.onload = () => { clearTimeout(t); ok("onload"); };
+        s.onerror = () => { clearTimeout(t); fail("onerror"); };
+
+        document.head.appendChild(s);
+      });
+    }
+
+    // ========= Start/End button discovery =========
+    // The widget renders its own call button rather than exposing a
+    // "start call" method — these class names are confirmed from the
+    // click-to-call-widget README's CSS override list.
+    function findCognigyStartButton(){
+      return (
+        document.querySelector(".webrtc_widget_content_call_button") ||
+        document.querySelector(".webrtc_widget_call_button") ||
+        document.querySelector('button[data-testid="cognigy-call-button"]')
+      );
+    }
+
+    function findCognigyEndButton(){
+      return (
+        document.querySelector(".webrtc_widget_end_call_button") ||
+        document.querySelector('button[aria-label*="end" i]') ||
+        document.querySelector('button[title*="end" i]')
+      );
+    }
+
+    function waitForStartButton(timeoutMs = 10000){
+      return new Promise((resolve) => {
+        const immediate = findCognigyStartButton();
+        if (immediate) return resolve(immediate);
+
+        const obs = new MutationObserver(() => {
+          const btn = findCognigyStartButton();
+          if (btn) { obs.disconnect(); resolve(btn); }
+        });
+        obs.observe(document.documentElement, { childList: true, subtree: true });
+
+        setTimeout(() => { obs.disconnect(); resolve(null); }, timeoutMs);
+      });
+    }
+
+    // Wires the documented widget/session events (see
+    // github.com/Cognigy/click-to-call-widget#event-handling-and-callbacks)
+    // for the transcript mirror. NOTE: on this widget version the Promise
+    // returned by initWebRTCWidget() does not resolve promptly (it appears to
+    // hang well past when the widget's own call button is already live), so
+    // this runs fire-and-forget rather than being awaited for readiness —
+    // readiness is instead based on the button actually appearing in the DOM
+    // (see preloadWidget below).
+    function wireWidgetEvents(widget){
+      window.__widget = widget;
+
+      widget.on("newRTCSession", (session) => {
+        window.__session = session;
+        setStatus("Calling…");
+
+        session.on("answered", () => setStatus("Connected"));
+
+        session.on("transcription", (transcription) => {
+          const originator = transcription?.originator || "unknown";
+          const messages = Array.isArray(transcription?.messages) ? transcription.messages : [];
+          for (const m of messages) {
+            if (m && typeof m.text === "string" && m.text.trim()) {
+              addTranscriptLine(originator, m.text.trim());
+            }
+          }
+        });
+
+        session.on("failed", () => setStatus("Call failed"));
+        session.on("ended", () => setStatus("Ended"));
+        session.on("terminated", () => setStatus("Ended"));
+      });
+
+      widget.on("connecting", () => setStatus("Connecting…"));
+      widget.on("connected", () => setStatus("Connected"));
+      widget.on("disconnected", () => setStatus("Disconnected"));
+      widget.on("registrationFailed", () => setStatus("Registration failed"));
+    }
+
+    async function preloadWidget(){
+      if (preloadStarted) return;
+      preloadStarted = true;
+
+      setStatus("Loading…");
+      try {
+        await loadScript();
+      } catch {
+        setStatus("Load failed");
+        preloadStarted = false; // allow retry on next click
+        return;
+      }
+
+      if (typeof window.initWebRTCWidget !== "function") {
+        setStatus("Unavailable");
+        preloadStarted = false;
+        return;
+      }
+
+      setStatus("Initializing…");
+
+      window.initWebRTCWidget(CLICK_TO_CALL_ENDPOINT_URL, {
+        // Fixed userId so this session is always found under the same
+        // value in Cognigy's Live Follow (Interaction Panel > Live Follow >
+        // User ID) — no need to hunt through Test > Logs for a random one.
+        userId: CLICK_TO_CALL_USER_ID,
+        ui: {
+          labels: {
+            callButton: "Start a Call",
+            endButton: "End a Call",
+            listenLabel: "Listening",
+          },
+        },
+      })
+        .then((widget) => wireWidgetEvents(widget))
+        .catch((err) => console.warn("initWebRTCWidget did not resolve:", err));
+
+      const btn = await waitForStartButton(10000);
+      if (btn) {
+        cachedStartBtn = btn;
+        byId("btnStartCall").disabled = false;
+        document.documentElement.classList.add("hide-cognigy-launcher");
+        setStatus("Ready");
+      } else {
+        setStatus("Not ready");
+      }
+    }
+
+    function startCall(){
+      const btn = cachedStartBtn || findCognigyStartButton();
+      if (!btn) { setStatus("Not ready"); return; }
+      btn.click();
+      setStatus("Calling…");
+    }
+
+    function endCall(){
+      const btn = findCognigyEndButton();
+      if (btn && isVisible(btn)) {
+        btn.click();
+        setStatus("Ended");
+      } else {
+        setStatus("End unavailable");
+      }
+    }
+
+    // ========= REAL COGNIGY WEBCHAT v3 (for the xApp continuation test) =========
+    let webchatScriptLoaded = false;
+    let webchatInstance = null;
+
+    function loadWebchatScript(timeoutMs = 12000){
+      return new Promise((resolve, reject) => {
+        if (webchatScriptLoaded) return resolve("already-loaded");
+        webchatScriptLoaded = true;
+
+        const s = document.createElement("script");
+        s.src = WEBCHAT_SCRIPT_SRC;
+        s.async = true;
+
+        let done = false;
+        const ok = (how) => { if (done) return; done = true; resolve(how); };
+        const fail = (how) => {
+          if (done) return;
+          done = true;
+          webchatScriptLoaded = false;
+          reject(new Error(how));
+        };
+
+        const t = setTimeout(() => fail("timeout"), timeoutMs);
+        s.onload = () => { clearTimeout(t); ok("onload"); };
+        s.onerror = () => { clearTimeout(t); fail("onerror"); };
+
+        document.head.appendChild(s);
+      });
+    }
+
+    // ---- Docking: move the widget's own DOM into our phone mockup ----
+    function findWebchatRoot(){
+      return document.querySelector("[data-cognigy-webchat-root]");
+    }
+
+    function waitForWebchatRoot(timeoutMs = 10000){
+      return new Promise((resolve) => {
+        const immediate = findWebchatRoot();
+        if (immediate) return resolve(immediate);
+
+        const obs = new MutationObserver(() => {
+          const el = findWebchatRoot();
+          if (el) { obs.disconnect(); resolve(el); }
+        });
+        obs.observe(document.documentElement, { childList: true, subtree: true });
+
+        setTimeout(() => { obs.disconnect(); resolve(null); }, timeoutMs);
+      });
+    }
+
+    function dockWebchatRoot(rootEl){
+      const mount = byId("webchatMount");
+      const hint = byId("webchatMountHint");
+      if (!mount || !rootEl) return;
+      if (rootEl.parentElement !== mount) mount.appendChild(rootEl);
+      if (hint) hint.style.display = "none";
+    }
+
+    function setWebchatHint(text){
+      const hint = byId("webchatMountHint");
+      if (hint) { hint.style.display = "flex"; hint.textContent = text; }
+    }
+
+    async function openRealWebchat(){
+      const btn = byId("btnRealWebchat");
+      show(byId("webchatOverlay"));
+
+      // Already initialised — just make sure it's open and docked, then stop.
+      if (webchatInstance) {
+        webchatInstance.open();
+        const existingRoot = findWebchatRoot();
+        if (existingRoot) dockWebchatRoot(existingRoot);
+        return;
+      }
+
+      if (btn) { btn.disabled = true; btn.textContent = "🧪 Loading…"; }
+      setWebchatHint("Loading Cognigy Webchat…");
+
+      try {
+        await loadWebchatScript();
+      } catch (err) {
+        console.warn("Webchat script failed to load:", err);
+        setWebchatHint("Couldn't load the Cognigy Webchat widget — check your connection and try again.");
+        if (btn) { btn.disabled = false; btn.textContent = "🧪 Real Webchat"; }
+        return;
+      }
+
+      if (typeof window.initWebchat !== "function") {
+        setWebchatHint("Webchat script loaded, but initWebchat() isn't available.");
+        if (btn) { btn.disabled = false; btn.textContent = "🧪 Real Webchat"; }
+        return;
+      }
+
+      window.initWebchat(WEBCHAT_CONFIG_URL, {
+        // Fixed userId so this session is findable under the same value in
+        // Cognigy's Live Follow, same as the Click To Call widget above.
+        userId: WEBCHAT_USER_ID,
+      })
+        .then((webchat) => {
+          webchatInstance = webchat;
+          webchat.open();
+        })
+        .catch((err) => {
+          console.warn("initWebchat failed:", err);
+          setWebchatHint("Couldn't start the real Cognigy Webchat — see console for details.");
+        });
+
+      // The widget renders its root node asynchronously — poll for it (same
+      // pattern as waitForStartButton above) rather than relying on the
+      // initWebchat Promise's timing, then move it into our mount.
+      const root = await waitForWebchatRoot(10000);
+      if (root) {
+        dockWebchatRoot(root);
+      } else {
+        setWebchatHint("Widget didn't render in time — close this and try again.");
+      }
+      if (btn) { btn.disabled = false; btn.textContent = "🧪 Real Webchat"; }
+    }
+
+    // ========= TEXT CHAT (REST Endpoint) =========
+    let textChatSessionId = null;
+    let textChatBusy = false;
+
+    function ensureTextChatSession(){
+      if (!textChatSessionId) {
+        textChatSessionId = "textchat-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+      }
+      return textChatSessionId;
+    }
+
+    function setTextChatStatus(t){
+      const el = byId("textChatStatus");
+      if (el) el.textContent = t;
+    }
+
+    // ========= INLINE ISA COMPARISON CARD =========
+    // Demo stand-in for the real Cognigy xApp round-trip (Init Session /
+    // Show HTML / SDK.submit). Instead of sending the user to an external
+    // xApp Shell page — a dead end for a REST-only channel, since the
+    // flow's follow-up reply has no live connection to land on — we detect
+    // the bot's comparison link, swap it for this card, and treat "Choose"
+    // as a normal chat message. That keeps everything on one synchronous
+    // REST request/response cycle, so the conversation just continues.
+    const ISA_COMPARE_OPTIONS = [
+      { name: "Cash ISA Saver", rate: "1.10% AER", meta: "Instant access · everyday flexibility" },
+      { name: "Save Well Limited Access ISA", rate: "3.00% AER", meta: "Limited withdrawals · higher rate" },
+      { name: "Fixed Rate Cash ISA", rate: "4.10% AER", meta: "Locked in · 18mo–3yr terms" },
+    ];
+
+    function buildIsaCompareCard(){
+      const wrap = document.createElement("div");
+      wrap.className = "compareCard";
+
+      const title = document.createElement("div");
+      title.className = "compareCardTitle";
+      title.textContent = "📊 Compare your Cash ISA options";
+      wrap.appendChild(title);
+
+      ISA_COMPARE_OPTIONS.forEach((opt) => {
+        const row = document.createElement("div");
+        row.className = "compareOption";
+        row.innerHTML = `
+          <div class="compareOptionTop">
+            <div class="compareOptionName">${escapeHtml(opt.name)}</div>
+            <div class="compareOptionRate">${escapeHtml(opt.rate)}</div>
+          </div>
+          <div class="compareOptionMeta">${escapeHtml(opt.meta)}</div>
+          <button class="btn primary compareChooseBtn" type="button">Choose this ISA</button>
+        `;
+        row.querySelector(".compareChooseBtn").addEventListener("click", () => chooseIsaOption(opt.name, wrap));
+        wrap.appendChild(row);
+      });
+
+      return wrap;
+    }
+
+    function chooseIsaOption(name, cardEl){
+      if (cardEl && !cardEl.classList.contains("chosen")) {
+        cardEl.classList.add("chosen");
+        cardEl.querySelectorAll(".compareChooseBtn").forEach((b) => (b.disabled = true));
+        const note = document.createElement("div");
+        note.className = "compareChosenNote";
+        note.textContent = `✓ You chose: ${name}`;
+        cardEl.appendChild(note);
+      }
+      // Informational phrasing on purpose — "I'd like to apply for X" was
+      // matching the real apply_for_isa tool, whose downstream logic
+      // expects data only a genuine xApp submission provides, and it was
+      // failing silently. This wording keeps the agent in Q&A mode so the
+      // conversation reliably continues for demo purposes.
+      sendTextChatMessage(`Tell me more about the ${name}.`);
+    }
+
+    function addTextChatBubble(who, text){
+      const list = byId("textChatList");
+      if (!list) return;
+
+      const safeText = String(text || "").trim();
+      if (!safeText) return;
+
+      const thresholdPx = 24;
+      const distanceFromBottom = list.scrollHeight - list.scrollTop - list.clientHeight;
+      const wasNearBottom = distanceFromBottom < thresholdPx;
+
+      const isBot = who !== "user";
+      const hasCompareLink = isBot && URL_TEST_PATTERN.test(safeText);
+
+      // Drop the raw xApp URL from the bubble text itself — it's replaced
+      // by the inline card below, not shown as a clickable link out.
+      const displayText = hasCompareLink
+        ? safeText.replace(URL_PATTERN, "").replace(/\s{2,}/g, " ").trim()
+        : safeText;
+
+      if (displayText) {
+        const line = document.createElement("div");
+        line.className = `tLine ${isBot ? "bot" : "user"}`;
+        line.innerHTML = linkifyText(displayText);
+
+        const meta = document.createElement("span");
+        meta.className = "tMeta";
+        meta.textContent = isBot ? "TSB Assistant" : "Warwick Zimmer";
+        line.appendChild(meta);
+
+        list.appendChild(line);
+      }
+
+      if (hasCompareLink) {
+        list.appendChild(buildIsaCompareCard());
+      }
+
+      if (wasNearBottom) {
+        requestAnimationFrame(() => { list.scrollTop = list.scrollHeight; });
+      }
+    }
+
+    async function sendTextChatMessage(presetText){
+      const input = byId("textChatInput");
+      const usingPreset = typeof presetText === "string";
+      const text = (usingPreset ? presetText : (input.value || "")).trim();
+      if (!text || textChatBusy) return;
+
+      addTextChatBubble("user", text);
+      if (!usingPreset) input.value = "";
+      textChatBusy = true;
+      byId("btnSendText").disabled = true;
+      setTextChatStatus("Sending…");
+
+      try {
+        const res = await fetch(TEXT_CHAT_ENDPOINT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: TEXT_CHAT_USER_ID,
+            sessionId: ensureTextChatSession(),
+            text,
+          }),
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        // Prefer the top-level `text` — it's the whole reply already
+        // concatenated into one natural message. outputStack breaks the
+        // same reply into one entry per sentence/Say node, which reads as
+        // several choppy bubbles instead of a single message, so it's only
+        // used as a fallback if the concatenated text is empty.
+        if (typeof data.text === "string" && data.text.trim()) {
+          addTextChatBubble("bot", data.text);
+        } else {
+          const stack = Array.isArray(data.outputStack) ? data.outputStack : [];
+          const botLines = stack.filter(
+            (o) => o && o.source === "bot" && typeof o.text === "string" && o.text.trim()
+          );
+          for (const line of botLines) addTextChatBubble("bot", line.text);
+        }
+
+        setTextChatStatus("Connected");
+      } catch (err) {
+        console.warn("Text chat request failed:", err);
+        setTextChatStatus("Send failed");
+      } finally {
+        textChatBusy = false;
+        byId("btnSendText").disabled = false;
+        input.focus();
+      }
+    }
+
+    function clearTextChat(){
+      const list = byId("textChatList");
+      if (list) list.innerHTML = "";
+      textChatSessionId = null; // next message starts a fresh session
+      setTextChatStatus("Idle");
+    }
+
+    // ========= UI wiring =========
+    document.addEventListener("DOMContentLoaded", () => {
+      // Projection modal
+      byId("btnProjection").addEventListener("click", () => show(byId("projectionModal")));
+      byId("btnCloseProjection").addEventListener("click", () => hide(byId("projectionModal")));
+      byId("btnProjectionClose").addEventListener("click", () => hide(byId("projectionModal")));
+      byId("projectionModal").addEventListener("click", (e) => {
+        if (e.target === byId("projectionModal")) hide(byId("projectionModal"));
+      });
+
+      // Projection -> Call Now
+      byId("btnProjectionCall").addEventListener("click", () => {
+        hide(byId("projectionModal"));
+        show(byId("callOverlay"));
+        preloadWidget();
+      });
+
+      // Call open/close
+      byId("btnCallNow").addEventListener("click", () => {
+        show(byId("callOverlay"));
+        preloadWidget();
+      });
+      byId("btnCloseCall").addEventListener("click", () => hide(byId("callOverlay")));
+      byId("callOverlay").addEventListener("click", (e) => {
+        if (e.target === byId("callOverlay")) hide(byId("callOverlay"));
+      });
+
+      // Call controls
+      byId("btnStartCall").addEventListener("click", () => startCall());
+      byId("btnEndCall").addEventListener("click", () => endCall());
+
+      // Transcript controls
+      byId("btnClearTranscript").addEventListener("click", () => clearTranscript());
+
+      // Text chat open/close
+      byId("btnTextChat").addEventListener("click", () => {
+        show(byId("textChatOverlay"));
+        setTextChatStatus("Connected");
+        byId("textChatInput").focus();
+      });
+      byId("btnCloseTextChat").addEventListener("click", () => hide(byId("textChatOverlay")));
+
+      // Real Webchat v3 (xApp continuation test)
+      byId("btnRealWebchat").addEventListener("click", () => openRealWebchat());
+      byId("btnCloseWebchat").addEventListener("click", () => hide(byId("webchatOverlay")));
+      byId("webchatOverlay").addEventListener("click", (e) => {
+        if (e.target === byId("webchatOverlay")) hide(byId("webchatOverlay"));
+      });
+      byId("textChatOverlay").addEventListener("click", (e) => {
+        if (e.target === byId("textChatOverlay")) hide(byId("textChatOverlay"));
+      });
+
+      // Text chat controls
+      byId("btnSendText").addEventListener("click", () => sendTextChatMessage());
+      byId("textChatInput").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); sendTextChatMessage(); }
+      });
+      byId("btnClearTextChat").addEventListener("click", () => clearTextChat());
+
+      setStatus("Idle");
+      updateTranscriptCount();
+      setTextChatStatus("Idle");
+    });
+  </script>
+</body>
+</html>
